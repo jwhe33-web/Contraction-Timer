@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Contraction Timer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fdf6f0;
+    --surface: #fff9f5;
+    --card: #ffffff;
+    --accent: #e8927c;
+    --accent-soft: #f5c4b8;
+    --accent-deep: #c96a52;
+    --text: #2d2420;
+    --text-soft: #8a7570;
+    --text-muted: #b8a9a4;
+    --alert: #d4533a;
+    --alert-bg: #fef0ed;
+    --success: #5a9e78;
+    --success-bg: #edf7f2;
+    --border: #f0e6e0;
+    --shadow: 0 2px 20px rgba(180,120,100,0.08);
+    --shadow-lg: 0 8px 40px rgba(180,120,100,0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 0 40px;
+    background-image: radial-gradient(circle at 20% 20%, #fde8e0 0%, transparent 50%),
+                      radial-gradient(circle at 80% 80%, #fde8e0 0%, transparent 50%);
+  }
+
+  header {
+    width: 100%;
+    padding: 28px 24px 0;
+    text-align: center;
+  }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.9rem;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent-deep);
+  }
+
+  .subtitle {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+  }
+
+  .alert-banner {
+    display: none;
+    margin: 16px 20px 0;
+    background: var(--alert-bg);
+    border: 1.5px solid var(--alert);
+    border-radius: 14px;
+    padding: 14px 18px;
+    text-align: center;
+    animation: pulse-border 1.5s ease-in-out infinite;
+  }
+
+  .alert-banner.visible { display: block; }
+
+  .alert-banner .alert-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    color: var(--alert);
+  }
+
+  .alert-banner .alert-sub {
+    font-size: 0.8rem;
+    color: var(--alert);
+    margin-top: 2px;
+    font-weight: 300;
+  }
+
+  @keyframes pulse-border {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(212,83,58,0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(212,83,58,0); }
+  }
+
+  .tap-area {
+    margin: 28px 20px 0;
+    width: calc(100% - 40px);
+    max-width: 400px;
+  }
+
+  .tap-btn {
+    width: 100%;
+    aspect-ratio: 1;
+    max-height: 240px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.6rem;
+    color: white;
+    background: radial-gradient(circle at 35% 35%, #f0a898, var(--accent) 50%, var(--accent-deep));
+    box-shadow: 0 8px 32px rgba(201,106,82,0.4), 0 2px 8px rgba(201,106,82,0.2);
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .tap-btn:active {
+    transform: scale(0.96);
+    box-shadow: 0 4px 16px rgba(201,106,82,0.4);
+  }
+
+  .tap-btn.contracting {
+    background: radial-gradient(circle at 35% 35%, #e06e5a, var(--accent-deep) 50%, #a04030);
+    animation: breathe 2s ease-in-out infinite;
+  }
+
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+  }
+
+  .tap-btn-label { font-size: 1.4rem; line-height: 1; }
+  .tap-btn-sub { font-family: 'DM Sans', sans-serif; font-size: 0.75rem; font-weight: 300; opacity: 0.85; letter-spacing: 0.05em; }
+
+  .tap-btn .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    transform: scale(0);
+    animation: ripple-anim 0.6s linear;
+    pointer-events: none;
+  }
+
+  @keyframes ripple-anim {
+    to { transform: scale(4); opacity: 0; }
+  }
+
+  .live-timer {
+    text-align: center;
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    min-height: 22px;
+    transition: opacity 0.3s;
+  }
+
+  .live-timer span {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.4rem;
+    color: var(--accent-deep);
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin: 20px 20px 0;
+    width: calc(100% - 40px);
+    max-width: 400px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 14px 10px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+
+  .stat-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .five-one-one {
+    margin: 16px 20px 0;
+    width: calc(100% - 40px);
+    max-width: 400px;
+    background: var(--card);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+
+  .five-one-one-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .criteria-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .criteria-row:last-child { margin-bottom: 0; }
+
+  .criteria-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+    transition: background 0.4s, box-shadow 0.4s;
+  }
+
+  .criteria-dot.met {
+    background: var(--success);
+    box-shadow: 0 0 6px rgba(90,158,120,0.4);
+  }
+
+  .criteria-text {
+    font-size: 0.82rem;
+    color: var(--text-soft);
+    flex: 1;
+  }
+
+  .criteria-value {
+    font-family: 'DM Serif Display', serif;
+    font-size: 0.95rem;
+    color: var(--text);
+  }
+
+  .history-section {
+    margin: 16px 20px 0;
+    width: calc(100% - 40px);
+    max-width: 400px;
+  }
+
+  .history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .history-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+
+  .clear-btn {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transition: background 0.2s;
+  }
+
+  .clear-btn:hover { background: var(--border); }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .history-item {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: grid;
+    grid-template-columns: 28px 1fr 1fr 1fr;
+    align-items: center;
+    gap: 8px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    animation: slide-in 0.3s ease;
+  }
+
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .history-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1rem;
+    color: var(--accent);
+  }
+
+  .history-cell { text-align: center; }
+
+  .history-cell-val {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1rem;
+    color: var(--text);
+  }
+
+  .history-cell-lbl {
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-style: italic;
+  }
+
+  .note {
+    margin: 20px 20px 0;
+    width: calc(100% - 40px);
+    max-width: 400px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Contraction <em>Timer</em></h1>
+  <p class="subtitle">Track · Breathe · Know when to go</p>
+</header>
+
+<div class="alert-banner" id="alertBanner">
+  <div class="alert-title">🏥 Time to go to hospital</div>
+  <div class="alert-sub">5-1-1 pattern met — call your midwife now</div>
+</div>
+
+<div class="tap-area" style="display:flex;flex-direction:column;align-items:center;">
+  <button class="tap-btn" id="tapBtn" onclick="handleTap(event)">
+    <span class="tap-btn-label" id="tapLabel">Tap to Start</span>
+    <span class="tap-btn-sub" id="tapSub">contraction begins</span>
+  </button>
+  <div class="live-timer" id="liveTimer"></div>
+</div>
+
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-value" id="statCount">—</div>
+    <div class="stat-label">Contractions</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="statFreq">—</div>
+    <div class="stat-label">Avg Frequency</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="statDur">—</div>
+    <div class="stat-label">Avg Duration</div>
+  </div>
+</div>
+
+<div class="five-one-one">
+  <div class="five-one-one-title">5-1-1 Rule Progress</div>
+  <div class="criteria-row">
+    <div class="criteria-dot" id="dot1"></div>
+    <div class="criteria-text">Every 5 min or less</div>
+    <div class="criteria-value" id="crit1">—</div>
+  </div>
+  <div class="criteria-row">
+    <div class="criteria-dot" id="dot2"></div>
+    <div class="criteria-text">Lasting 1 min or more</div>
+    <div class="criteria-value" id="crit2">—</div>
+  </div>
+  <div class="criteria-row">
+    <div class="criteria-dot" id="dot3"></div>
+    <div class="criteria-text">For at least 1 hour</div>
+    <div class="criteria-value" id="crit3">—</div>
+  </div>
+</div>
+
+<div class="history-section">
+  <div class="history-header">
+    <div class="history-title">Contraction Log</div>
+    <button class="clear-btn" onclick="clearAll()">Clear all</button>
+  </div>
+  <div class="history-list" id="historyList">
+    <div class="empty-state">No contractions logged yet.<br>Tap the button when one begins.</div>
+  </div>
+</div>
+
+<div class="note">
+  Always follow your midwife's specific guidance.<br>
+  This is a support tool, not medical advice.
+</div>
+
+<script>
+  let state = 'idle';
+  let contractionStart = null;
+  let contractions = [];
+  let liveInterval = null;
+
+  function fmt(ms) {
+    const s = Math.round(ms / 1000);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    if (m > 0) return `${m}m ${sec.toString().padStart(2,'0')}s`;
+    return `${sec}s`;
+  }
+
+  function fmtMin(ms) {
+    const s = Math.round(ms / 1000);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m > 0 ? `${m}:${sec.toString().padStart(2,'0')}` : `0:${sec.toString().padStart(2,'0')}`;
+  }
+
+  function handleTap(e) {
+    const btn = document.getElementById('tapBtn');
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = (e.clientX - rect.left - size/2) + 'px';
+    ripple.style.top = (e.clientY - rect.top - size/2) + 'px';
+    btn.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
+    if (state === 'idle') startContraction();
+    else endContraction();
+  }
+
+  function startContraction() {
+    state = 'contracting';
+    contractionStart = Date.now();
+    const btn = document.getElementById('tapBtn');
+    btn.classList.add('contracting');
+    document.getElementById('tapLabel').textContent = 'Tap to End';
+    document.getElementById('tapSub').textContent = 'contraction ending';
+    liveInterval = setInterval(() => {
+      const elapsed = Date.now() - contractionStart;
+      document.getElementById('liveTimer').innerHTML = `Duration: <span>${fmtMin(elapsed)}</span>`;
+    }, 500);
+  }
+
+  function endContraction() {
+    state = 'idle';
+    const now = Date.now();
+    const duration = now - contractionStart;
+    let frequency = null;
+    if (contractions.length > 0) {
+      frequency = contractionStart - contractions[contractions.length - 1].start;
+    }
+    contractions.push({ start: contractionStart, duration, frequency });
+    clearInterval(liveInterval);
+    document.getElementById('liveTimer').innerHTML = `Last: <span>${fmt(duration)}</span>`;
+    const btn = document.getElementById('tapBtn');
+    btn.classList.remove('contracting');
+    document.getElementById('tapLabel').textContent = 'Tap to Start';
+    document.getElementById('tapSub').textContent = 'contraction begins';
+    updateStats();
+    renderHistory();
+    check511();
+  }
+
+  function updateStats() {
+    const n = contractions.length;
+    document.getElementById('statCount').textContent = n;
+    const durs = contractions.map(c => c.duration);
+    const avgDur = durs.reduce((a,b) => a+b, 0) / n;
+    document.getElementById('statDur').textContent = fmt(avgDur);
+    const freqs = contractions.filter(c => c.frequency !== null).map(c => c.frequency);
+    if (freqs.length > 0) {
+      const avgFreq = freqs.reduce((a,b) => a+b, 0) / freqs.length;
+      document.getElementById('statFreq').textContent = fmt(avgFreq);
+    } else {
+      document.getElementById('statFreq').textContent = '—';
+    }
+  }
+
+  function check511() {
+    const n = contractions.length;
+    if (n < 2) { updateCriteria(false, false, false, null, null, null); return; }
+    const recent = contractions.slice(-6);
+    const recentFreqs = recent.filter(c => c.frequency !== null).map(c => c.frequency);
+    const recentDurs = recent.map(c => c.duration);
+    const avgFreq = recentFreqs.length > 0 ? recentFreqs.reduce((a,b)=>a+b,0)/recentFreqs.length : null;
+    const avgDur = recentDurs.reduce((a,b)=>a+b,0)/recentDurs.length;
+    const met1 = avgFreq !== null && avgFreq <= 5 * 60 * 1000;
+    const met2 = avgDur >= 60 * 1000;
+    const elapsed = contractions[n-1].start - contractions[0].start;
+    const met3 = elapsed >= 60 * 60 * 1000;
+    updateCriteria(met1, met2, met3, avgFreq, avgDur, elapsed);
+    if (met1 && met2 && met3) document.getElementById('alertBanner').classList.add('visible');
+  }
+
+  function updateCriteria(met1, met2, met3, freq, dur, elapsed) {
+    document.getElementById('dot1').className = 'criteria-dot' + (met1 ? ' met' : '');
+    document.getElementById('dot2').className = 'criteria-dot' + (met2 ? ' met' : '');
+    document.getElementById('dot3').className = 'criteria-dot' + (met3 ? ' met' : '');
+    document.getElementById('crit1').textContent = freq !== null ? fmt(freq) : '—';
+    document.getElementById('crit2').textContent = dur !== null ? fmt(dur) : '—';
+    document.getElementById('crit3').textContent = elapsed !== null ? fmt(elapsed) + ' in' : '—';
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    if (contractions.length === 0) {
+      list.innerHTML = '<div class="empty-state">No contractions logged yet.<br>Tap the button when one begins.</div>';
+      return;
+    }
+    const items = [...contractions].reverse().slice(0, 10);
+    list.innerHTML = items.map((c, i) => {
+      const num = contractions.length - i;
+      return `
+        <div class="history-item">
+          <div class="history-num">${num}</div>
+          <div class="history-cell">
+            <div class="history-cell-val">${fmt(c.duration)}</div>
+            <div class="history-cell-lbl">Duration</div>
+          </div>
+          <div class="history-cell">
+            <div class="history-cell-val">${c.frequency !== null ? fmt(c.frequency) : '—'}</div>
+            <div class="history-cell-lbl">Frequency</div>
+          </div>
+          <div class="history-cell">
+            <div class="history-cell-val">${new Date(c.start).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+            <div class="history-cell-lbl">Time</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function clearAll() {
+    if (contractions.length === 0) return;
+    if (!confirm('Clear all contractions?')) return;
+    contractions = [];
+    state = 'idle';
+    clearInterval(liveInterval);
+    document.getElementById('tapLabel').textContent = 'Tap to Start';
+    document.getElementById('tapSub').textContent = 'contraction begins';
+    document.getElementById('tapBtn').classList.remove('contracting');
+    document.getElementById('liveTimer').innerHTML = '';
+    document.getElementById('statCount').textContent = '—';
+    document.getElementById('statFreq').textContent = '—';
+    document.getElementById('statDur').textContent = '—';
+    document.getElementById('alertBanner').classList.remove('visible');
+    updateCriteria(false, false, false, null, null, null);
+    renderHistory();
+  }
+
+  if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(() => {});
+</script>
+</body>
+</html>
