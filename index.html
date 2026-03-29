@@ -513,20 +513,40 @@
     }
   }
 
-  function check511() {
-    const n = contractions.length;
-    if (n < 2) { updateCriteria(false, false, false, null, null, null); return; }
-    const recent = contractions.slice(-6);
-    const recentFreqs = recent.filter(c => c.frequency !== null).map(c => c.frequency);
-    const recentDurs = recent.map(c => c.duration);
-    const avgFreq = recentFreqs.length > 0 ? recentFreqs.reduce((a,b)=>a+b,0)/recentFreqs.length : null;
-    const avgDur = recentDurs.reduce((a,b)=>a+b,0)/recentDurs.length;
-    const met1 = avgFreq !== null && avgFreq <= 5 * 60 * 1000;
-    const met2 = avgDur >= 60 * 1000;
-    const elapsed = contractions[n-1].start - contractions[0].start;
-    const met3 = elapsed >= 60 * 60 * 1000;
-    updateCriteria(met1, met2, met3, avgFreq, avgDur, elapsed);
-    if (met1 && met2 && met3) document.getElementById('alertBanner').classList.add('visible');
+function check511() {
+    const now = Date.now();
+    const window60 = 60 * 60 * 1000;
+    const fiveMin = 5 * 60 * 1000;
+    const oneMin = 60 * 1000;
+
+    const recent = contractions.filter(c => (now - c.start) <= window60);
+
+    if (recent.length < 2) {
+      updateCriteria(false, false, false, null, null, null);
+      document.getElementById('alertBanner').classList.remove('visible');
+      return;
+    }
+
+    const intervals = recent.filter(c => c.frequency !== null).map(c => c.frequency);
+    const avgInterval = intervals.length > 0 ? intervals.reduce((a,b) => a+b, 0) / intervals.length : null;
+
+    // met1: average interval <= 5 min (one outlier is fine)
+    const met1 = avgInterval !== null && avgInterval <= fiveMin;
+
+    const avgDur = recent.map(c => c.duration).reduce((a,b) => a+b, 0) / recent.length;
+    const met2 = avgDur >= oneMin;
+
+    const oldestInWindow = recent[0].start;
+    const windowSpan = now - oldestInWindow;
+    const met3 = met1 && windowSpan >= window60;
+
+    updateCriteria(met1, met2, met3, avgInterval, avgDur, windowSpan);
+
+    if (met1 && met2 && met3) {
+      document.getElementById('alertBanner').classList.add('visible');
+    } else {
+      document.getElementById('alertBanner').classList.remove('visible');
+    }
   }
 
   function updateCriteria(met1, met2, met3, freq, dur, elapsed) {
@@ -535,7 +555,7 @@
     document.getElementById('dot3').className = 'criteria-dot' + (met3 ? ' met' : '');
     document.getElementById('crit1').textContent = freq !== null ? fmt(freq) : '—';
     document.getElementById('crit2').textContent = dur !== null ? fmt(dur) : '—';
-    document.getElementById('crit3').textContent = elapsed !== null ? fmt(elapsed) + ' in' : '—';
+    document.getElementById('crit3').textContent = elapsed !== null ? fmt(elapsed) + ' sustained' : '—';
   }
 
   function renderHistory() {
